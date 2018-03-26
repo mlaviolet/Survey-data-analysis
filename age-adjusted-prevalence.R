@@ -3,17 +3,16 @@
 # Age Standardization and Population Counts
 # Task 1a: How to Generate Age-Adjusted Prevalence Rates in SUDAAN
 # Step 1: How to Generate Age-Adjusted Prevalence Rates in SUDAAN
-
-# M. Laviolette
+# Michael Laviolette PhD MPH, statman54@gmail.com
 
 library(tidyverse)
 library(survey)
 library(srvyr)
 # also used: haven
-# setwd("C:/Stat projects/svystandardize")
 
-setwd("//hzndhhsvf2/data/OCPH/EPI/BHSDM/Group/Michael Laviolette/R programs/BRFSS/svystandardize/NHANES example")
-# # dataset
+# setwd("My directory")
+# download files manually in case of problems with download.file
+# # SAS dataset
 # download.file("ftp://ftp.cdc.gov/pub/health_statistics/nchs/tutorial/nhanes/Continuous/analysis_data.sas7bdat",
 #               "analysis_data.sas7bdat")
 # # standard proportions for NHANES population groupings
@@ -27,7 +26,7 @@ setwd("//hzndhhsvf2/data/OCPH/EPI/BHSDM/Group/Michael Laviolette/R programs/BRFS
 #               "adjprevalence.pdf")
 
 # import from SAS data
-analysis_data <- haven::read_sas("analysis_data.zip")
+analysis_data <- haven::read_sas("analysis_data.sas7bdat")
 
 # computing prevalence of high blood pressure
 # number and mean of non-missing systolic blood pressure entries for 
@@ -83,7 +82,8 @@ working_data <-
                          TRUE ~ NA_character_),
          HBP = factor(HBP))
 rm(sbp, dbp, analysis_data)
-# check--looks good
+
+# check
 lapply(working_data[c("RIAGENDR", "age", "race", "HBP")], summary)
 lapply(working_data[c("n_sbp", "n_dbp", "HBP_trt", "SBP140", "DBP90")], 
        table, exclude = NULL)
@@ -104,7 +104,6 @@ svy_crude <- working_data %>%
 # --------------------------------
 # Total  8960   29.3433   0.8381
 
-# sink("age-adj.txt")
 # since adjusting over entire dataset, need a variable with the same
 #   value throughout--since not present, creating on the fly with
 #   update function
@@ -175,31 +174,6 @@ svystandardize(svy_crude, by = ~age, over = ~RIAGENDR + race,
             pct = survey_mean(HBP == "Yes")) %>% 
   mutate_at(vars(starts_with("pct")), function(x) 100 * x)
 
-# sink()
 
-
-
-# # estimate of high BP in population age 20 or older
-# svy_crude %>% 
-#   filter(RIDAGEYR >= 20 & !is.na(HBP)) %>% 
-#   summarize(n = unweighted(n()),
-#             pct = survey_mean(HBP == "Yes", na.rm = TRUE))
-# 
-# # by gender
-# svy_crude %>% 
-#   filter(RIDAGEYR >= 20) %>% 
-#   group_by(RIAGENDR) %>% 
-#   summarize(pct = survey_mean(HBP == "Yes", na.rm = TRUE))
-# 
-# # by race
-# svy_crude %>% 
-#   filter(RIDAGEYR >= 20) %>% 
-#   group_by(race) %>% 
-#   summarize(pct = survey_mean(HBP == "Yes", na.rm = TRUE))
-# 
-# # by gender and race
-# svy_crude %>% 
-#   filter(RIDAGEYR >= 20) %>% 
-#   group_by(RIAGENDR, race) %>% 
-#   summarize(pct = survey_mean(HBP == "Yes", na.rm = TRUE))
+# END ---------------------------------------------------------------------
 
