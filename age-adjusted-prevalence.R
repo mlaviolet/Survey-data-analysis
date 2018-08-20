@@ -1,5 +1,6 @@
 # This code reproduces results for tutorial for age-adjusted prevalence from 
-#   survey data
+#   survey data using functions from survey and srvyr packages
+# Also uses tidyverse functions
 # https://www.cdc.gov/nchs/tutorials/NHANES/Downloads/intro.htm#15
 # Age Standardization and Population Counts
 # Task 1a: How to Generate Age-Adjusted Prevalence Rates in SUDAAN
@@ -13,14 +14,14 @@ library(srvyr)
 # also used: haven
 
 setwd("My directory")
-# In case of problems with downloades files, download manually with given URLs
+# In case of problems with downloaded files, download manually with given URLs
 # SAS dataset
 download.file("ftp://ftp.cdc.gov/pub/health_statistics/nchs/tutorial/nhanes/Continuous/analysis_data.sas7bdat",
               "analysis_data.sas7bdat")
 # standard proportions for NHANES population groupings
 download.file("https://www.cdc.gov/nchs/tutorials/nhanes/downloads/Continuous/ageadjwt.xls",
               "ageadjwt.xls")
-# # SAS program to generate age-adjusted prevalence rates
+# SAS program to generate age-adjusted prevalence rates, if you have SAS and SUDAAN
 download.file("ftp://ftp.cdc.gov/pub/health_statistics/nchs/tutorial/nhanes/Continuous/adjprev_sudaan.sas",
               "adjprev_sudaan.sas")
 # output of program to generate age-adjusted prevalence rates
@@ -30,7 +31,7 @@ download.file("https://www.cdc.gov/nchs/tutorials/nhanes/downloads/Continuous/ad
 # import from SAS data
 analysis_data <- haven::read_sas("analysis_data.sas7bdat")
 
-# computing prevalence of high blood pressure
+# Computing prevalence of high blood pressure
 # number and mean of non-missing systolic blood pressure entries for 
 #   each respondent
 sbp <- analysis_data %>% 
@@ -39,7 +40,6 @@ sbp <- analysis_data %>%
   group_by(SEQN) %>% 
   summarize(n_sbp = n(),
             mean_sbp = mean(value))
-# sbp %>% count(n_sbp)
 
 # number and mean of non-missing diastolic blood pressure entries for 
 #   each respondent
@@ -51,8 +51,7 @@ dbp <- analysis_data %>%
   # SEQN is unique respondent ID
   group_by(SEQN) %>% 
   summarize(n_dbp = n(),
-            mean_dbp = mean(value, na.rm = TRUE))
-# dbp %>% count(n_dbp)  
+            mean_dbp = mean(value, na.rm = TRUE)) 
 
 # construct recoded data --------------------------------------------------
 working_data <- 
@@ -97,9 +96,10 @@ std_pop <- c(77670, 72816, 45364)
 svy_crude <- working_data %>% 
   as_survey_design(ids = SDMVPSU, strata = SDMVSTRA, weights = WTMEC4YR, 
                    nest = TRUE)
-# for each domain, construct adjusted survey object and obtain prevalence
 
+# For each domain, construct adjusted survey object and obtain prevalence
 # Population age 20 and older
+# Results from SUDAAN
 # --------------------------------
 #        Sample           Standard
 #        Size   Percent   Error
@@ -115,6 +115,7 @@ svystandardize(update(svy_crude, dummy = 1), by = ~age, over = ~dummy,
   filter(RIDAGEYR >= 20) %>% 
   summarize(n = unweighted(n()),
     pct = survey_mean(HBP == "Yes")) %>% 
+  # convert to percent
   mutate_at(vars(starts_with("pct")), function(x) 100 * x)
 
 # by gender
@@ -175,7 +176,6 @@ svystandardize(svy_crude, by = ~age, over = ~RIAGENDR + race,
   summarize(n = unweighted(n()),
             pct = survey_mean(HBP == "Yes")) %>% 
   mutate_at(vars(starts_with("pct")), function(x) 100 * x)
-
 
 # END ---------------------------------------------------------------------
 
