@@ -1,8 +1,10 @@
-# reproduce results for tutorial for age-adjusted prevalence from survey data
+# This code reproduces results for tutorial for age-adjusted prevalence from 
+#   survey data
 # https://www.cdc.gov/nchs/tutorials/NHANES/Downloads/intro.htm#15
 # Age Standardization and Population Counts
 # Task 1a: How to Generate Age-Adjusted Prevalence Rates in SUDAAN
 # Step 1: How to Generate Age-Adjusted Prevalence Rates in SUDAAN
+
 # Michael Laviolette PhD MPH, statman54@gmail.com
 
 library(tidyverse)
@@ -10,20 +12,20 @@ library(survey)
 library(srvyr)
 # also used: haven
 
-# setwd("My directory")
-# download files manually in case of problems with download.file
-# # SAS dataset
-# download.file("ftp://ftp.cdc.gov/pub/health_statistics/nchs/tutorial/nhanes/Continuous/analysis_data.sas7bdat",
-#               "analysis_data.sas7bdat")
-# # standard proportions for NHANES population groupings
-# download.file("https://www.cdc.gov/nchs/tutorials/nhanes/downloads/Continuous/ageadjwt.xls",
-#               "ageadjwt.xls")
+setwd("My directory")
+# In case of problems with downloades files, download manually with given URLs
+# SAS dataset
+download.file("ftp://ftp.cdc.gov/pub/health_statistics/nchs/tutorial/nhanes/Continuous/analysis_data.sas7bdat",
+              "analysis_data.sas7bdat")
+# standard proportions for NHANES population groupings
+download.file("https://www.cdc.gov/nchs/tutorials/nhanes/downloads/Continuous/ageadjwt.xls",
+              "ageadjwt.xls")
 # # SAS program to generate age-adjusted prevalence rates
-# download.file("ftp://ftp.cdc.gov/pub/health_statistics/nchs/tutorial/nhanes/Continuous/adjprev_sudaan.sas",
-#               "adjprev_sudaan.sas")
-# # output of program to generate age-adjusted prevalence rates
-# download.file("https://www.cdc.gov/nchs/tutorials/nhanes/downloads/Continuous/adjprevalence.pdf",
-#               "adjprevalence.pdf")
+download.file("ftp://ftp.cdc.gov/pub/health_statistics/nchs/tutorial/nhanes/Continuous/adjprev_sudaan.sas",
+              "adjprev_sudaan.sas")
+# output of program to generate age-adjusted prevalence rates
+download.file("https://www.cdc.gov/nchs/tutorials/nhanes/downloads/Continuous/adjprevalence.pdf",
+              "adjprevalence.pdf")
 
 # import from SAS data
 analysis_data <- haven::read_sas("analysis_data.sas7bdat")
