@@ -13,20 +13,19 @@ library(survey)
 library(srvyr)
 # also used: haven
 
-setwd("My directory")
-# In case of problems with downloaded files, download manually with given URLs
+# set project directory or use "here" package
 # SAS dataset
 download.file("ftp://ftp.cdc.gov/pub/health_statistics/nchs/tutorial/nhanes/Continuous/analysis_data.sas7bdat",
-              "analysis_data.sas7bdat")
+              "analysis_data.sas7bdat", mode = "wb")
 # standard proportions for NHANES population groupings
 download.file("https://www.cdc.gov/nchs/tutorials/nhanes/downloads/Continuous/ageadjwt.xls",
-              "ageadjwt.xls")
+              "ageadjwt.xls", mode = "wb")
 # SAS program to generate age-adjusted prevalence rates, if you have SAS and SUDAAN
 download.file("ftp://ftp.cdc.gov/pub/health_statistics/nchs/tutorial/nhanes/Continuous/adjprev_sudaan.sas",
-              "adjprev_sudaan.sas")
+              "adjprev_sudaan.sas", mode = "wb")
 # output of program to generate age-adjusted prevalence rates
 download.file("https://www.cdc.gov/nchs/tutorials/nhanes/downloads/Continuous/adjprevalence.pdf",
-              "adjprevalence.pdf")
+              "adjprevalence.pdf", mode = "wb")
 
 # import from SAS data
 analysis_data <- haven::read_sas("analysis_data.sas7bdat")
