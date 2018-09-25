@@ -42,12 +42,12 @@ sbp <- analysis_data %>%
 
 # number and mean of non-missing diastolic blood pressure entries for 
 #   each respondent
+# SEQN is unique respondent ID
 dbp <- analysis_data %>% 
   select(SEQN, starts_with("BPXDI")) %>% 
   gather("key", "value", -SEQN, na.rm = TRUE) %>% 
-  # some DBP values are 0; set to missing
+  # set DBP values recorded as 0 to missing
   mutate(value = na_if(value, 0)) %>% 
-  # SEQN is unique respondent ID
   group_by(SEQN) %>% 
   summarize(n_dbp = n(),
             mean_dbp = mean(value, na.rm = TRUE)) 
