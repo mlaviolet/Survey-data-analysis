@@ -1,11 +1,9 @@
-# This code reproduces results for tutorial for age-adjusted prevalence from 
-#   survey data using functions from survey and srvyr packages
-# Also uses tidyverse functions
+# This code reproduces results from CDC tutorial for age-adjusted prevalence 
+#   from survey data using functions from survey and srvyr packages
 # https://www.cdc.gov/nchs/tutorials/NHANES/Downloads/intro.htm#15
 # Age Standardization and Population Counts
-# Task 1a: How to Generate Age-Adjusted Prevalence Rates in SUDAAN
-# Step 1: How to Generate Age-Adjusted Prevalence Rates in SUDAAN
-
+#   Task 1a: How to Generate Age-Adjusted Prevalence Rates in SUDAAN
+#   Step 1: How to Generate Age-Adjusted Prevalence Rates in SUDAAN
 # Michael Laviolette PhD MPH, statman54@gmail.com
 
 library(tidyverse)
@@ -31,7 +29,9 @@ download.file("https://www.cdc.gov/nchs/tutorials/nhanes/downloads/Continuous/ad
 analysis_data <- haven::read_sas("analysis_data.sas7bdat")
 
 # Computing prevalence of high blood pressure
-# number and mean of non-missing systolic blood pressure entries for 
+# SEQN is unique respondent ID
+
+# Number and mean of non-missing systolic blood pressure entries for 
 #   each respondent
 sbp <- analysis_data %>% 
   select(SEQN, starts_with("BPXSY")) %>% 
@@ -40,9 +40,8 @@ sbp <- analysis_data %>%
   summarize(n_sbp = n(),
             mean_sbp = mean(value))
 
-# number and mean of non-missing diastolic blood pressure entries for 
+# Number and mean of non-missing diastolic blood pressure entries for 
 #   each respondent
-# SEQN is unique respondent ID
 dbp <- analysis_data %>% 
   select(SEQN, starts_with("BPXDI")) %>% 
   gather("key", "value", -SEQN, na.rm = TRUE) %>% 
@@ -55,19 +54,21 @@ dbp <- analysis_data %>%
 # construct recoded data --------------------------------------------------
 working_data <- 
   # add sbp and dbp to data
-  reduce(list(analysis_data, dbp, sbp), inner_join, by = "SEQN") %>% 
+  list(analysis_data, dbp, sbp) %>% 
+  reduce(inner_join, by = "SEQN") %>% 
   # recode race and age group
   mutate(RIAGENDR = factor(RIAGENDR, 1:2, c("Male", "Female")),
          age = cut(RIDAGEYR, c(20, 40, 60, Inf), right = FALSE),
-         race = case_when(RIDRETH1 == 3 ~ "NH-White", 
-                          RIDRETH1 == 4 ~ "NH-Black", 
-                          RIDRETH1 == 1 ~ "Mex-Am",
+         race = case_when(RIDRETH1 == 3 ~ "NH-White", # non-Hispanic White
+                          RIDRETH1 == 4 ~ "NH-Black", # non-Hispanic Black
+                          RIDRETH1 == 1 ~ "Mex-Am",   # Mexican-American
                           RIDRETH1 %in% c(2, 5) ~ "Other",
                           TRUE ~ NA_character_),
          race = factor(race),
-         # reorder factors as above
+         # reorder factors in above order
          race = fct_relevel(race, "NH-White", "NH-Black")) %>% 
   # construct high blood pressure indicator HBP
+  # coding as 0 = No, 1 = Yes
   # frequencies match SAS when rows with n_sbp = 0 are removed (i.e., no 
   #   BP measurements)
   mutate(HBP_trt = 
@@ -80,7 +81,11 @@ working_data <-
   mutate(HBP = case_when(HBP_trt == 0 & SBP140 == 0 & DBP90 == 0 ~ "No", 
                          HBP_trt %in% 0:1 ~ "Yes",
                          TRUE ~ NA_character_),
-         HBP = factor(HBP))
+         HBP = factor(HBP)) %>% 
+  # since adjusting over entire dataset, need a variable with the same
+  #   value throughout--creating such here
+  mutate(all_adults = "All adults age 20+")
+  
 rm(sbp, dbp, analysis_data)
 
 # check
@@ -89,12 +94,28 @@ lapply(working_data[c("n_sbp", "n_dbp", "HBP_trt", "SBP140", "DBP90")],
        table, exclude = NULL)
 
 # age-adjusted prevalence -------------------------------------------------
-# standard population, age groups 20-39, 40-59, 60+
-std_pop <- c(77670, 72816, 45364)
 # unadjusted survey object 
 svy_crude <- working_data %>% 
   as_survey_design(ids = SDMVPSU, strata = SDMVSTRA, weights = WTMEC4YR, 
                    nest = TRUE)
+
+# function to compute estimates of hypertension for age 20+, standardized 
+#   by age groups
+# single argument is subpopulation over which standardization occurs, as string
+getPrevalence <- function(over) {
+  group_vars <- syms(over)
+  svystandardize(svy_crude, by = ~ age, over = make.formula(over),
+                 # using NCHS standard population for ages 20-39, 
+                 #   40-59, 60+
+                 population = c(77670, 72816, 45364), 
+                 excluding.missing = make.formula(c(over, "age", "HBP"))) %>% 
+    filter(RIDAGEYR >= 20) %>%
+    group_by(!!!group_vars) %>%
+    summarize(n = unweighted(n()),
+              pct = survey_mean(HBP == "Yes")) %>% 
+    mutate_at("pct", function(x) round(100 * x, 1)) %>% 
+    mutate_at("pct_se", function(x) round(100 * x, 3))
+  }
 
 # For each domain, construct adjusted survey object and obtain prevalence
 # Population age 20 and older
@@ -105,17 +126,7 @@ svy_crude <- working_data %>%
 # --------------------------------
 # Total  8960   29.3433   0.8381
 
-# since adjusting over entire dataset, need a variable with the same
-#   value throughout--since not present, creating on the fly with
-#   update function
-svystandardize(update(svy_crude, dummy = 1), by = ~age, over = ~dummy,
-               population = std_pop,
-               excluding.missing = ~age + HBP) %>%
-  filter(RIDAGEYR >= 20) %>% 
-  summarize(n = unweighted(n()),
-    pct = survey_mean(HBP == "Yes")) %>% 
-  # convert to percent
-  mutate_at(vars(starts_with("pct")), function(x) 100 * x)
+getPrevalence("all_adults")
 
 # by gender
 # ----------------------------------
@@ -125,14 +136,7 @@ svystandardize(update(svy_crude, dummy = 1), by = ~age, over = ~dummy,
 # Male    4228   28.3277   1.2083
 # Female  4732   29.9706   0.7126
 
-svystandardize(svy_crude, by = ~age, over = ~RIAGENDR,
-               population = std_pop,
-               excluding.missing = ~age + RIAGENDR + HBP) %>% 
-  filter(RIDAGEYR >= 20) %>% 
-  group_by(RIAGENDR) %>% 
-  summarize(n = unweighted(n()),
-            pct = survey_mean(HBP == "Yes")) %>% 
-  mutate_at(vars(starts_with("pct")), function(x) 100 * x)
+getPrevalence("RIAGENDR")
 
 # by race
 # -----------------------------------------------------
@@ -144,14 +148,7 @@ svystandardize(svy_crude, by = ~age, over = ~RIAGENDR,
 # Mex-Am          2087    26.0541   0.9851
 # Other            757    30.5625   2.2547
 
-svystandardize(svy_crude, by = ~age, over = ~race,
-               population = std_pop,
-               excluding.missing = ~age + race + HBP) %>% 
-  filter(RIDAGEYR >= 20) %>% 
-  group_by(race) %>% 
-  summarize(n = unweighted(n()),
-            pct = survey_mean(HBP == "Yes")) %>% 
-  mutate_at(vars(starts_with("pct")), function(x) 100 * x)
+getPrevalence("race")
 
 # by race and gender
 # -----------------------------------------------------
@@ -167,14 +164,7 @@ svystandardize(svy_crude, by = ~age, over = ~race,
 # Female  Mex-Am         1130   25.9149   1.1827
 # Female  Other           429   32.0618   2.4540
 
-svystandardize(svy_crude, by = ~age, over = ~RIAGENDR + race,
-               population = std_pop,
-               excluding.missing = ~age + race + RIAGENDR + HBP) %>% 
-  filter(RIDAGEYR >= 20) %>% 
-  group_by(RIAGENDR, race) %>% 
-  summarize(n = unweighted(n()),
-            pct = survey_mean(HBP == "Yes")) %>% 
-  mutate_at(vars(starts_with("pct")), function(x) 100 * x)
+getPrevalence(c("RIAGENDR", "race"))
 
 # END ---------------------------------------------------------------------
 
