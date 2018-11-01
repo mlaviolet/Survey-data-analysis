@@ -20,7 +20,7 @@ download.file("https://www.cdc.gov/nchs/tutorials/nhanes/downloads/Continuous/ag
               "ageadjwt.xls", mode = "wb")
 # SAS program to generate age-adjusted prevalence rates, if you have SAS and SUDAAN
 download.file("ftp://ftp.cdc.gov/pub/health_statistics/nchs/tutorial/nhanes/Continuous/adjprev_sudaan.sas",
-              "adjprev_sudaan.sas", mode = "wb")
+              "adjprev_sudaan.sas")
 # output of program to generate age-adjusted prevalence rates
 download.file("https://www.cdc.gov/nchs/tutorials/nhanes/downloads/Continuous/adjprevalence.pdf",
               "adjprevalence.pdf", mode = "wb")
