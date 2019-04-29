@@ -1,6 +1,6 @@
 # using anesrake package to rake simple artificial survey
 # data source: Addinsoft SARL as demo for XLSTAT Excel add-on
-# http://www.xlstat.com/en/support/tutorials/raking-survey.htm
+# https://help.xlstat.com/customer/en/portal/articles/2062302-raking-a-survey-sample-using-xlstat?b_id=9283
 # data spreadsheet:
 # https://help.xlstat.com/customer/portal/kb_article_attachments/59989/original.xls?1437066865
 # code by Michael Laviolette PhD MPH, statman54@gmail.com
