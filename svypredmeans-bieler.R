@@ -28,24 +28,27 @@ nhis <- haven::read_sas(unzip("samadulted.zip")) %>%
          mrtl_3 = case_when(R_MARITL %in% 1:3 ~ 1,
                             R_MARITL == 4 ~ 2,
                             R_MARITL %in% 5:8 ~ 3,
-                             TRUE ~ NA_real_),
+                            TRUE ~ NA_real_),
          mrtl_3 = factor(mrtl_3, 1:3, 
                           c("Married", "Widowed", "Unmarried")),
          SEX = factor(SEX, labels = c("Male", "Female")),
-         REGION = factor(REGION)) %>% 
-  # make can't afford meds the referent--"Yes" means unable to afford meds
-  mutate(cantafmeds = factor(AHCAFYR1, 2:1, c("No", "Yes"))) %>% 
+         REGION = factor(REGION),
+         # make can't afford meds the referent--"
+         #   Yes" means unable to afford meds
+         cantafmeds = factor(AHCAFYR1, 2:1, c("No", "Yes"))) %>% 
   # create appropriate survey design
   as_survey_design(ids = PSU_P, strata = STRAT_P, weights = WTFA_SA, 
                    nest = TRUE)
 # file.remove("samadulted.sas7bdat", "samadulted.zip")
 summary(nhis)
 
-lapply(nhis$variables[c("educ_3", "age23_3", "mrtl_3", "SEX")], summary)
+nhis$variables %>% 
+  select(educ_3, age23_3, mrtl_3, SEX) %>% 
+  summary()
 
 # number of observations read; should be 24,275
 nrow(nhis)
-# number of observations in subpopulation; should be 16,469
+# number of observations in subpopulation of interest; should be 16,469
 nhis$variables %>% 
   filter(AGE_P >= 25 & MRACRPI2 == 1) %>% 
   count()
@@ -54,10 +57,6 @@ nhis$variables %>%
 # Unadjusted prevalence by age group
 # Results in paper slightly off, but results obtained below agree with SUDAAN
 # Using logit CIs since that's default in SUDAAN
-prev_unadj <- 
-  svyby(~ I(cantafmeds == "Yes"), ~ age23_3, 
-        subset(nhis, AGE_P >= 25 & MRACRPI2 == 1), 
-        svyciprop, method = "logit", na.rm = TRUE)
 
 nhis %>% 
   filter(AGE_P >= 25 & MRACRPI2 == 1) %>% 
@@ -105,6 +104,11 @@ exp(confint(cntrst_2c))
 # Table 3
 # Age-specific prevalence differences
 # Difference in unadjusted prevalences
+# need prevelances as "svyby" object
+prev_unadj <- 
+  svyby(~ I(cantafmeds == "Yes"), ~ age23_3, 
+        subset(nhis, AGE_P >= 25 & MRACRPI2 == 1), 
+        svyciprop, method = "logit", na.rm = TRUE)
 svycontrast(prev_unadj, list(`25-44 vs 65+` = c(-1, 1, 0), 
                              `45-64 vs 65+` = c(-1, 0, 1)))
 
@@ -113,5 +117,5 @@ svycontrast(predmrg_1, quote(`[25,45)` - `[65,Inf)`))
 svycontrast(predmrg_1, quote(`[45,65)` - `[65,Inf)`))
 # same using contrast coefficients
 svycontrast(predmrg_1, list(`25-44 vs 65+` = c(0, 1, -1), 
-                           `45-64 vs 65+` = c(1, 0, -1)))
+                            `45-64 vs 65+` = c(1, 0, -1)))
 
